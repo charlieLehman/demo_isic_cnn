@@ -71,7 +71,7 @@ def _variable_on_cpu(name, shape, initializer):
     Variable Tensor
   """
   with tf.device('/cpu:0'):
-    dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+    dtype = tf.float32
     var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
@@ -92,7 +92,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   Returns:
     Variable Tensor
   """
-  dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+  dtype =  tf.float32
   var = _variable_on_cpu(
       name,
       shape,
