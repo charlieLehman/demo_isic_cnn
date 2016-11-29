@@ -40,6 +40,11 @@ NUM_CLASSES = isic_input.NUM_CLASSES
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = isic_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = isic_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
+# Constants describing the training process.
+MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
+NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
+LEARNING_RATE_DECAY_FACTOR = 0.03  # Learning rate decay factor.
+INITIAL_LEARNING_RATE = 0.03       # Initial learning rate.
 
 def _activation_summary(x):
   """Helper to create summaries for activations.
@@ -54,7 +59,7 @@ def _activation_summary(x):
   """
   # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
   # session. This helps the clarity of presentation on tensorboard.
-  tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+  tensor_name = re.sub('%s_[0-9]*/' % 'tower', '', x.op.name)
   tf.histogram_summary(tensor_name + '/activations', x)
   tf.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 

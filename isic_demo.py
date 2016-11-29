@@ -40,12 +40,18 @@ tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/cifar_isic_checkpoints/FFT_
                            """Directory where to read FFT model checkpoints.""")
 tf.app.flags.DEFINE_string('HSV_dir', '/home/charlie/cifar_isic_checkpoints/HSV_train',
                            """Directory where to read HSV model checkpoints.""")
-tf.app.flags.DEFINE_string('images_dir', '/home/charlie/projects/demo_isic_cnn/images', """Directory that the demo images reside""")
+tf.app.flags.DEFINE_string('images_dir', '/home/charlie/projects/demo_isic_cnn/images',
+                           """Directory that the demo images reside""")
 tf.app.flags.DEFINE_boolean('run_once', True,
-                         """Whether to run eval only once.""")
+                            """Whether to run eval only once.""")
+global guess
+global benign
+guess = []
+benign = []
 
 
-def eval_once(saver, summary_writer, model_ckpt):
+
+def eval_once(saver, summary_writer, model_ckpt, inference, logits, top_k_op):
   with tf.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(model_ckpt)
     if ckpt and ckpt.model_checkpoint_path:
@@ -62,30 +68,41 @@ def eval_once(saver, summary_writer, model_ckpt):
       for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
         threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
                                          start=True))
-      guess = sess.run([logits])
-      print('%s' % (datetime.now()))
-      summary = tf.Summary()
-      summary.ParseFromString(sess.run(summary_op))
-      summary.value.add(tag='Precision @ 1', simple_value=precision)
-      summary_writer.add_summary(summary, global_step)
+      global guess
+      global benign
+
+      guess.append(sess.run([logits])[0][0])
+      benign.append(sess.run([top_k_op])[0][0])
 
     except Exception as e:  # pylint: disable=broad-except
       coord.request_stop(e)
 
     coord.request_stop()
     coord.join(threads, stop_grace_period_secs=10)
+  return guess
 
-    return guess
 
 
 def evaluate(image,summary_dir):
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
 
+    height = 220
+    width = 220
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    logits = tf.nn.softmax(cifar10.inference(image))
+    
+    tf_im = tf.image.per_image_whitening(tf.image.resize_image_with_crop_or_pad(tf.cast(image, tf.float32),width,height))
+    bimage, label_batch = tf.train.batch(
+        [tf_im, 0],
+        batch_size=1,
+        num_threads=1,
+        capacity=4 )
+
+    inference = cifar10.inference(bimage)
+    logits = tf.nn.softmax(inference)
+    top_k_op = tf.nn.in_top_k(logits,[0],1)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
@@ -99,27 +116,47 @@ def evaluate(image,summary_dir):
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      return eval_once(saver, summary_writer, summary_dir)
+      eval_once(saver, summary_writer, summary_dir,inference, logits, top_k_op)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
 
+def conditional_switch(logic_vector):
+    switch = {
+         '0b111':"99.91",
+         '0b110':"83.33",
+         '0b101':"84",
+         '0b100':"10",
+         '0b011':"84.91",
+         '0b001':"10.64",
+         '0b010':"6.67",
+         '0b000':"0"
+    }
+    return switch.get(logic_vector,"none")
 
 def main(argv=None):  # pylint: disable=unused-argument
-    print(FLAGS.images_dir)
-    rgbim = cv.imread(op.join(FLAGS.images_dir,"image1.png"))
+    rgbim = cv.imread(op.join(FLAGS.images_dir,"image7.jpg"))
     fftim = u.imageSet.to_FFT(rgbim)
     hsvim = u.imageSet.to_HSV(rgbim)
 
-    tf_rgbim = tf.cast(rgbim, tf.float32)
-    tf_fftim = tf.cast(fftim, tf.float32)
-    tf_hsvim = tf.cast(hsvim, tf.float32)
 
-    inf_rgb = evaluate(rgbim,FLAGS.RGB_dir)
-    inf_fft = evaluate(fftim,FLAGS.FFT_dir)
-    inf_hsv = evaluate(hsvim,FLAGS.HSV_dir)
+    evaluate(rgbim,FLAGS.RGB_dir)
+    evaluate(fftim,FLAGS.FFT_dir)
+    evaluate(hsvim,FLAGS.HSV_dir)
 
-    print('[RGB, FFT, HSV]:[%s, %s, %s]' % (inf_rgb, inf_fft, inf_hsv))
+    
+    mean = (guess[0]+guess[1]+guess[2])/3
+    benign_case = '0b' + ''.join(['1' if x else '0' for x in benign])
+    print('There is a %s %% confidence this is Benign' % (conditional_switch(benign_case)))
+    
+    print('Is it benign? [RGB, FFT, HSV]')
+    print(benign)
+
+    print('                 [ BENI | MALI ]' )
+    print('RGB distribution:[ %0.2f | %0.2f ]' % (guess[0][0], guess[0][1]))
+    print('FFT distribution:[ %0.2f | %0.2f ]' % (guess[1][0], guess[1][1]))
+    print('HSV distribution:[ %0.2f | %0.2f ]' % (guess[2][0], guess[2][1]))
+
 
 if __name__ == '__main__':
     tf.app.run()
