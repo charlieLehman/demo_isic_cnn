@@ -40,7 +40,7 @@ tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/cifar_isic_checkpoints/FFT_
                            """Directory where to read FFT model checkpoints.""")
 tf.app.flags.DEFINE_string('HSV_dir', '/home/charlie/cifar_isic_checkpoints/HSV_train',
                            """Directory where to read HSV model checkpoints.""")
-tf.app.flags.DEFINE_string('images_dir', '/home/charlie/projects/demo_isic_cnn/images',
+tf.app.flags.DEFINE_string('images_dir', '/home/charlie/Dropbox/demo/',
                            """Directory that the demo images reside""")
 tf.app.flags.DEFINE_boolean('run_once', True,
                             """Whether to run eval only once.""")
@@ -135,7 +135,7 @@ def conditional_switch(logic_vector):
     return switch.get(logic_vector,"none")
 
 def main(argv=None):  # pylint: disable=unused-argument
-    rgbim = cv.imread(op.join(FLAGS.images_dir,"image7.jpg"))
+    rgbim = cv.imread(op.join(FLAGS.images_dir,"image.jpg"))
     fftim = u.imageSet.to_FFT(rgbim)
     hsvim = u.imageSet.to_HSV(rgbim)
 
