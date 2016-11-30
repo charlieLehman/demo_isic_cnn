@@ -135,7 +135,7 @@ def conditional_switch(logic_vector):
     return switch.get(logic_vector,"none")
 
 def main(argv=None):  # pylint: disable=unused-argument
-    rgbim = cv.imread(op.join(FLAGS.images_dir,"image.jpg"))
+    rgbim = cv.imread(op.join(FLAGS.images_dir,"demo.jpg"))
     fftim = u.imageSet.to_FFT(rgbim)
     hsvim = u.imageSet.to_HSV(rgbim)
 
