@@ -135,9 +135,13 @@ def conditional_switch(logic_vector):
     return switch.get(logic_vector,"none")
 
 def main(argv=None):  # pylint: disable=unused-argument
-    rgbim = cv.imread(op.join(FLAGS.images_dir,"demo.jpg"))
+    rgbim = u.imageSet.resize_to(cv.imread(op.join(FLAGS.images_dir,"demo.jpg")),256)
     fftim = u.imageSet.to_FFT(rgbim)
     hsvim = u.imageSet.to_HSV(rgbim)
+
+    cv.imwrite('/home/charlie/Dropbox/demo/demo_RGB.jpg',rgbim)
+    cv.imwrite('/home/charlie/Dropbox/demo/demo_FFT.jpg',fftim)
+    cv.imwrite('/home/charlie/Dropbox/demo/demo_HSV.jpg',hsvim)
 
 
     evaluate(rgbim,FLAGS.RGB_dir)
